@@ -1,0 +1,40 @@
+{
+    "gap_company_name": "string | null",
+    "eul_name": "string | null",
+
+    "contract_start_date": "YYYY-MM-DD | null",
+    "contract_end_date": "YYYY-MM-DD | null",
+    "workplace": "string | null",
+    "job_description": "string | null",
+    "work_days_per_week": "number | null",
+    "work_days_note": "string | null",
+    "work_start_time": "HH:MM | null",
+    "work_end_time": "HH:MM | null",
+    "break_start_time": "HH:MM | null",
+    "break_end_time": "HH:MM | null",
+    "weekly_holiday_day": "string | null",
+
+    "wage_type": "시간급 | 일급 | 월급 | null",
+    "wage_amount": "number | null",
+    "extra_pay_exists": "boolean | null",
+    "extra_pay_amount": "number | null",
+    "extra_pay_detail": "string | null",
+    "overtime_rate_pct": "number | null",
+    "overtime_rate_detail": "string | null",
+    "pay_day": "number | null",
+    "pay_cycle": "매월 | 매주 | null",
+    "pay_method": "string | null",
+
+    "insurance_employment": "boolean",
+    "insurance_industrial": "boolean",
+    "insurance_pension": "boolean",
+    "insurance_health": "boolean",
+
+    "contract_date": "YYYY-MM-DD | null",
+    "gap_business_name": "string | null",
+    "gap_representative": "string | null",
+    "gap_address": "string | null",
+    "eul_address": "string | null",
+    "eul_full_name": "string | null",
+    "eul_resident_id": "string | null"
+}
