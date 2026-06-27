@@ -1,4 +1,4 @@
-# Build artifacts / dependencies (root-level safety net)
+# Build artifacts / dependencies (frontend)
 .next/
 **/.next/
 node_modules/
@@ -6,14 +6,32 @@ node_modules/
 out/
 build/
 dist/
+*.tsbuildinfo
 
-# Env / secrets
+# Python (backend)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local storage / generated artifacts
+backend/storage/
+
+# Environment / secrets
 .env
 .env.*
 !.env.example
 
-# OS / misc
+# OS / editor
 .DS_Store
 *.pem
+*.swp
+.idea/
+.vscode/
+
+# Logs
 *.log
-*.tsbuildinfo

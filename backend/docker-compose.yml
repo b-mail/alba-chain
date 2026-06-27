@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: alba-chain-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: alba
+      POSTGRES_PASSWORD: alba
+      POSTGRES_DB: alba_chain
+    ports:
+      - "5432:5432"
+    volumes:
+      - alba_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alba -d alba_chain"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  alba_pgdata:

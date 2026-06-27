@@ -1,0 +1,541 @@
+openapi: 3.1.0
+info:
+  title: 알바 관리 서비스 API (근로계약서 / 대타·추가근무 Agent)
+  version: 0.1.0
+  description: |
+    해커톤 MVP용 API 명세.
+    - 근로계약서 Agent: 문서 업로드 파싱(UF1, PDF/DOCX/TXT), 줄글 입력 생성(UF2)
+    - 대타/추가근무 Agent: 증빙 → VLM 해석 → 온톨로지 매핑 → 급여 재계산
+    비동기 작업(파싱·VLM 해석)은 202 + jobId 로 응답하며 폴링/SSE 로 결과를 수신한다.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: 로컬 개발
+
+tags:
+  - name: contracts
+    description: 근로계약서 Agent
+  - name: extra-shifts
+    description: 대타/추가근무 Agent
+  - name: pay
+    description: 급여 계산
+  - name: jobs
+    description: 비동기 Agent 잡
+
+paths:
+  ##################################################################
+  # 근로계약서 Agent - UF1 (기존 알바 / 업로드)
+  ##################################################################
+  /contracts/upload:
+    post:
+      tags: [contracts]
+      summary: 근로계약서 문서 업로드 (UF1)
+      description: |
+        근로계약서 문서(PDF / DOCX / TXT) 업로드 → labor_contracts(status=parsing) 생성
+        + contract_parse 잡 트리거. 워커가 문서에서 텍스트를 추출해 계약 조건을 추출한다.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [store_id, file]
+              properties:
+                store_id:
+                  type: integer
+                  format: int64
+                file:
+                  type: string
+                  format: binary
+                  description: 계약서 파일 (application/pdf, .docx, .txt 지원)
+      responses:
+        '202':
+          description: 파싱 잡 접수됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+
+  /contracts/draft:
+    post:
+      tags: [contracts]
+      summary: 줄글 입력으로 계약 초안 생성 (UF2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, raw_text]
+              properties:
+                store_id:
+                  type: integer
+                  format: int64
+                raw_text:
+                  type: string
+                  example: "김알바 시급 11000원, 월수금 18시~22시 근무, 4대보험 미가입 3.3%"
+      responses:
+        '201':
+          description: 추출 완료된 초안 (status=extracted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+
+  /contracts/{id}:
+    get:
+      tags: [contracts]
+      summary: 계약 상세 / 추출 결과 조회
+      parameters:
+        - $ref: '#/components/parameters/ContractId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [contracts]
+      summary: 추출된 계약 조건 수정 (UF2)
+      parameters:
+        - $ref: '#/components/parameters/ContractId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractTermsInput'
+      responses:
+        '200':
+          description: 수정됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+
+  /contracts/{id}/confirm:
+    post:
+      tags: [contracts]
+      summary: 추출값 검증·확정 (UF1)
+      description: extracted_terms → contract_terms/work_schedules/ontology_nodes 정형화, status=active
+      parameters:
+        - $ref: '#/components/parameters/ContractId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractTermsInput'
+      responses:
+        '200':
+          description: 확정됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+
+  /contracts/{id}/generate-pdf:
+    post:
+      tags: [contracts]
+      summary: 계약서 PDF 생성 (UF2)
+      parameters:
+        - $ref: '#/components/parameters/ContractId'
+      responses:
+        '201':
+          description: 생성된 문서
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractDocument'
+
+  /contracts/{id}/send:
+    post:
+      tags: [contracts]
+      summary: 알바에게 계약서 전송 (UF2)
+      parameters:
+        - $ref: '#/components/parameters/ContractId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_phone]
+              properties:
+                employee_phone:
+                  type: string
+                  example: "010-1234-5678"
+      responses:
+        '200':
+          description: 전송됨 (status=pending_signature)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+
+  ##################################################################
+  # 비동기 잡
+  ##################################################################
+  /agent-jobs/{jobId}:
+    get:
+      tags: [jobs]
+      summary: Agent 잡 상태 폴링
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentJob'
+
+  ##################################################################
+  # 대타/추가근무 Agent
+  ##################################################################
+  /extra-shifts:
+    post:
+      tags: [extra-shifts]
+      summary: 대타/추가근무 세션 시작
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, employee_id, shift_type]
+              properties:
+                store_id: { type: integer, format: int64 }
+                employee_id: { type: integer, format: int64 }
+                shift_type:
+                  type: string
+                  enum: [substitute, overtime]
+      responses:
+        '201':
+          description: 세션 생성됨 (status=evidence_uploaded 대기)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtraShift'
+
+  /extra-shifts/{id}/evidences:
+    post:
+      tags: [extra-shifts]
+      summary: 증빙(카톡 캡처 등) 업로드 → VLM 해석 잡 트리거
+      parameters:
+        - $ref: '#/components/parameters/ExtraShiftId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                evidence_type:
+                  type: string
+                  enum: [kakaotalk_image, text]
+                file:
+                  type: string
+                  format: binary
+                raw_content:
+                  type: string
+      responses:
+        '202':
+          description: VLM 해석 잡 접수됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+
+  /extra-shifts/{id}:
+    get:
+      tags: [extra-shifts]
+      summary: VLM 해석 결과 + 매핑 후보 조회
+      parameters:
+        - $ref: '#/components/parameters/ExtraShiftId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtraShift'
+
+  /extra-shifts/{id}/mapping:
+    patch:
+      tags: [extra-shifts]
+      summary: 기존 계약 노드에 강제 매핑 확정
+      description: |
+        매핑 후보 중 하나를 선택해 강제 매핑한다. start_at/end_at 을 생략하면
+        VLM 해석 결과로 자동 채운다. 매핑 시 잠정 PayEstimate 가 SSE 로 push 된다.
+      parameters:
+        - $ref: '#/components/parameters/ExtraShiftId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contract_id]
+              properties:
+                contract_id: { type: integer, format: int64 }
+                node_id: { type: integer, format: int64 }
+                start_at: { type: string, format: date-time }
+                end_at: { type: string, format: date-time }
+      responses:
+        '200':
+          description: 매핑됨 (status=mapped)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtraShift'
+
+  /extra-shifts/{id}/reject:
+    post:
+      tags: [extra-shifts]
+      summary: 증빙/해석 반려
+      description: 부정확한 증빙·해석을 반려한다 (status=rejected).
+      parameters:
+        - $ref: '#/components/parameters/ExtraShiftId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: 반려됨 (status=rejected)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtraShift'
+
+  /extra-shifts/{id}/confirm:
+    post:
+      tags: [extra-shifts]
+      summary: 사장 최종 승인 → 근태 반영 + 급여 재계산
+      parameters:
+        - $ref: '#/components/parameters/ExtraShiftId'
+      responses:
+        '200':
+          description: 승인됨 (status=confirmed)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ExtraShift'
+                  - type: object
+                    properties:
+                      pay_estimate:
+                        $ref: '#/components/schemas/PayEstimate'
+
+  ##################################################################
+  # 급여
+  ##################################################################
+  /employees/{id}/pay-estimate:
+    get:
+      tags: [pay]
+      summary: 실시간 예상 급여 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayEstimate'
+
+  /employees/{id}/pay-estimate/stream:
+    get:
+      tags: [pay]
+      summary: 예상 급여 실시간 푸시 (SSE)
+      description: text/event-stream. 매핑·승인 시 갱신된 PayEstimate 를 push.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: SSE 스트림
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+components:
+  parameters:
+    ContractId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    ExtraShiftId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+
+  responses:
+    NotFound:
+      description: 리소스 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+
+    JobAccepted:
+      type: object
+      properties:
+        job_id: { type: integer, format: int64 }
+        status: { type: string, example: queued }
+        poll_url: { type: string, example: /api/v1/agent-jobs/12 }
+
+    AgentJob:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        job_type:
+          type: string
+          enum: [contract_parse, contract_generate, vlm_interpret]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        result: { type: object }
+        error: { type: string, nullable: true }
+
+    Contract:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        store_id: { type: integer, format: int64 }
+        employee_id: { type: integer, format: int64, nullable: true }
+        source: { type: string, enum: [uploaded, generated] }
+        status:
+          type: string
+          enum: [draft, parsing, extracted, pending_signature, active, expired, failed]
+        raw_text: { type: string, nullable: true }
+        extracted_terms:
+          $ref: '#/components/schemas/ContractTermsInput'
+        terms:
+          $ref: '#/components/schemas/ContractTermsInput'
+        created_at: { type: string, format: date-time }
+
+    ContractTermsInput:
+      type: object
+      properties:
+        hourly_wage: { type: integer, example: 11000 }
+        weekly_hours: { type: number, example: 12.0 }
+        work_start_date: { type: string, format: date }
+        work_end_date: { type: string, format: date, nullable: true }
+        pay_day: { type: integer, example: 10 }
+        tax_type: { type: string, example: freelance_3_3 }
+        weekly_holiday_eligible: { type: boolean }
+        schedules:
+          type: array
+          items:
+            type: object
+            properties:
+              day_of_week: { type: integer, minimum: 0, maximum: 6 }
+              start_time: { type: string, example: "18:00" }
+              end_time: { type: string, example: "22:00" }
+              break_minutes: { type: integer, example: 0 }
+
+    ContractDocument:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        contract_id: { type: integer, format: int64 }
+        doc_type: { type: string, enum: [original_pdf, ocr_txt, generated_pdf] }
+        file_url: { type: string }
+
+    ExtraShift:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        store_id: { type: integer, format: int64 }
+        employee_id: { type: integer, format: int64 }
+        shift_type: { type: string, enum: [substitute, overtime] }
+        status:
+          type: string
+          enum: [evidence_uploaded, interpreting, interpreted, mapped, confirmed, rejected]
+        mapped_contract_id: { type: integer, format: int64, nullable: true }
+        mapped_node_id: { type: integer, format: int64, nullable: true }
+        work_date: { type: string, format: date, nullable: true }
+        start_at: { type: string, format: date-time, nullable: true }
+        end_at: { type: string, format: date-time, nullable: true }
+        worked_minutes: { type: integer, nullable: true }
+        interpreted_context: { type: string, nullable: true }
+        confidence: { type: number, nullable: true }
+        reject_reason: { type: string, nullable: true }
+        vlm_extraction:
+          $ref: '#/components/schemas/VlmExtraction'
+        mapping_candidates:
+          type: array
+          description: interpreted 이후 산출되는 매핑 후보 (GET 응답에서 채워짐)
+          items:
+            $ref: '#/components/schemas/MappingCandidate'
+
+    MappingCandidate:
+      type: object
+      properties:
+        contract_id: { type: integer, format: int64 }
+        node_id: { type: integer, format: int64, nullable: true }
+        label: { type: string }
+        score: { type: number }
+        reason: { type: string }
+        suggested_start_at: { type: string, format: date-time, nullable: true }
+        suggested_end_at: { type: string, format: date-time, nullable: true }
+
+    VlmExtraction:
+      type: object
+      properties:
+        event: { type: string }
+        requested_by: { type: string }
+        start: { type: string, format: date-time, nullable: true }
+        end: { type: string, format: date-time, nullable: true }
+        duration_minutes: { type: integer, nullable: true }
+        confidence: { type: number }
+
+    PayEstimate:
+      type: object
+      properties:
+        employee_id: { type: integer, format: int64 }
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date }
+        base_minutes: { type: integer }
+        extra_minutes: { type: integer }
+        gross_pay: { type: integer }
+        weekly_holiday_pay: { type: integer }
+        tax_amount: { type: integer }
+        net_pay: { type: integer }
+        breakdown:
+          type: object
+          description: 일자별/항목별 그래프 데이터
