@@ -17,7 +17,15 @@ from app.schemas.extra_shift import (
     VlmExtraction,
 )
 from app.schemas.job import AgentJob
+from app.schemas.org import (
+    Employee,
+    EmployeeCreate,
+    EmployeeUpdate,
+    Store,
+    StoreCreate,
+)
 from app.schemas.pay import PayEstimate
+from app.schemas.work_record import WorkRecord
 
 __all__ = [
     "Error",
@@ -37,4 +45,10 @@ __all__ = [
     "VlmExtraction",
     "AgentJob",
     "PayEstimate",
+    "Store",
+    "StoreCreate",
+    "Employee",
+    "EmployeeCreate",
+    "EmployeeUpdate",
+    "WorkRecord",
 ]

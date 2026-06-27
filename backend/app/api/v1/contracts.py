@@ -110,6 +110,17 @@ def get_contract(id: int, db: Session = Depends(get_db)) -> Contract:
     return serialize_contract(contract)
 
 
+@router.get("/{id}/documents", response_model=list[ContractDocument])
+def list_contract_documents(
+    id: int, db: Session = Depends(get_db)
+) -> list[ContractDocument]:
+    """계약에 연결된 문서(원본 PDF / OCR txt / 생성 PDF) 목록 조회."""
+    contract = db.get(LaborContract, id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="contract_not_found")
+    return [ContractDocument.model_validate(d) for d in contract.documents]
+
+
 @router.patch("/{id}", response_model=Contract)
 def update_contract(
     id: int, payload: ContractTermsInput, db: Session = Depends(get_db)
