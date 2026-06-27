@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowRight, Clock, TrendingUp, Users } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { BarChart } from "@/components/charts/bar-chart";
 import { LineAreaChart } from "@/components/charts/line-area-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +37,27 @@ const statusMeta: Record<
   break: { label: "휴게중", dot: "bg-amber-500", variant: "warning" },
   off: { label: "퇴근", dot: "bg-slate-300", variant: "secondary" },
 };
+
+const anomalySignals = [
+  {
+    tag: "이탈 위험",
+    badgeClass: "bg-orange-500 text-white border-transparent",
+    title: "대타 요청이 지나치게 잦은 알바생이 있어요",
+    detail: "김민지 님 · 최근 4주간 대타 6회. 번아웃·이탈 신호일 수 있습니다.",
+  },
+  {
+    tag: "인건비",
+    badgeClass: "bg-brand-900 text-white border-transparent",
+    title: "이번 달 연장근무가 빠르게 늘고 있어요",
+    detail: "지난달 대비 +32% · 금요일 저녁 시간대에 집중되어 있습니다.",
+  },
+  {
+    tag: "인력 공백",
+    badgeClass: "bg-brand-900 text-white border-transparent",
+    title: "주말 마감 시간대 인력이 반복 부족해요",
+    detail: "최근 3주 토·일 21시 이후 1인 근무가 발생했습니다.",
+  },
+];
 
 export default function OwnerDashboardPage() {
   const working = staffList.filter((s) => s.status !== "off");
@@ -116,8 +143,8 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card>
           <CardHeader>
             <CardTitle>실시간 급여 발생 추이</CardTitle>
             <CardDescription>오늘 시간대별 누적 인건비 (원)</CardDescription>
@@ -128,80 +155,95 @@ export default function OwnerDashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>주간 인건비</CardTitle>
-            <CardDescription>요일별 지급액</CardDescription>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>실시간 근무 현황</CardTitle>
+              <CardDescription>현재 근무 중인 아르바이트생</CardDescription>
+            </div>
+            <Link href="/owner/staff">
+              <Button variant="ghost" size="sm">
+                전체 보기
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
-            <BarChart data={weeklyPayrollTrend} highlightLast />
+            <div className="space-y-3">
+              {staffList.map((s) => {
+                const meta = statusMeta[s.status];
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 rounded-xl border border-border p-4"
+                  >
+                    <div
+                      className={cn(
+                        "flex h-11 w-11 items-center justify-center rounded-full font-bold text-white",
+                        s.avatarColor,
+                      )}
+                    >
+                      {s.name[0]}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{s.name}</p>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs",
+                            s.status === "working"
+                              ? "text-accent-600"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full",
+                              meta.dot,
+                              s.status === "working" && "animate-pulse",
+                            )}
+                          />
+                          {meta.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {s.role} · {s.clockIn ? `${s.clockIn} 출근` : "미출근"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">오늘 발생</p>
+                      <p className="font-bold tabular-nums">
+                        {formatCurrency(s.accruedPayToday)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Card className="mt-6">
-        <CardHeader className="flex-row items-center justify-between">
-          <div>
-            <CardTitle>실시간 근무 현황</CardTitle>
-            <CardDescription>현재 근무 중인 아르바이트생</CardDescription>
-          </div>
-          <Link href="/owner/staff">
-            <Button variant="ghost" size="sm">
-              전체 보기
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-brand-600" />
+            AI 이상 신호
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {staffList.map((s) => {
-              const meta = statusMeta[s.status];
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 rounded-xl border border-border p-4"
-                >
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-full font-bold text-white",
-                      s.avatarColor,
-                    )}
-                  >
-                    {s.name[0]}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{s.name}</p>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 text-xs",
-                          s.status === "working"
-                            ? "text-accent-600"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "h-2 w-2 rounded-full",
-                            meta.dot,
-                            s.status === "working" && "animate-pulse",
-                          )}
-                        />
-                        {meta.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {s.role} · {s.clockIn ? `${s.clockIn} 출근` : "미출근"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">오늘 발생</p>
-                    <p className="font-bold tabular-nums">
-                      {formatCurrency(s.accruedPayToday)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid gap-3 md:grid-cols-3">
+            {anomalySignals.map((a) => (
+              <div
+                key={a.title}
+                className="rounded-xl border border-border p-4"
+              >
+                <Badge className={a.badgeClass}>{a.tag}</Badge>
+                <p className="mt-3 font-semibold leading-snug">{a.title}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {a.detail}
+                </p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ export type UserRole = "owner" | "worker";
 export type TaskStatus = "pending" | "submitted" | "verified" | "rejected";
 
 export type ContractExtract = {
+  staffId?: string;
   workerName: string;
   role: string;
   hourlyWage: number;

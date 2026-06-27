@@ -74,7 +74,7 @@ export default function WorkerTodosPage() {
             <Card
               key={todo.id}
               className={cn(
-                "p-4 transition",
+                "gap-0 p-4 transition",
                 todo.isNew && "border-accent-400 bg-accent-50/30",
                 todo.priority === "high" &&
                   todo.status === "pending" &&

@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { Camera, CheckCircle2, ImagePlus, RotateCcw, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { workerTasks } from "@/lib/mock-data";
-import { formatCurrency } from "@/lib/utils";
 
 type CaptureStep = "select" | "preview" | "analyzing" | "done";
 
@@ -25,11 +23,7 @@ export default function WorkerCapturePage() {
   };
 
   return (
-    <AppShell
-      role="worker"
-      title="원샷 캡처"
-      subtitle="업무 완료 사진 한 장으로 AI 검증 · 보너스"
-    >
+    <AppShell role="worker" title="업무 사진 등록">
       {step === "select" && (
         <>
           <p className="mb-3 text-sm font-medium text-muted">업무 선택</p>
@@ -49,7 +43,6 @@ export default function WorkerCapturePage() {
                 >
                   <div className="flex justify-between">
                     <span className="font-semibold">{task.title}</span>
-                    <Badge variant="success">+{formatCurrency(task.bonus)}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted">{task.captureHint}</p>
                 </button>
@@ -83,7 +76,7 @@ export default function WorkerCapturePage() {
               <Camera className="h-16 w-16 opacity-30" />
             </div>
           </div>
-          <Card className="mb-4 p-4">
+          <Card className="mb-4 gap-1 p-4">
             <p className="font-semibold">{selectedTask.title}</p>
             <p className="text-sm text-muted">{selectedTask.zone}</p>
           </Card>
@@ -105,9 +98,6 @@ export default function WorkerCapturePage() {
             <Sparkles className="h-10 w-10" />
           </div>
           <p className="text-lg font-bold">AI가 캡처를 검증 중...</p>
-          <p className="mt-2 text-sm text-muted">
-            온톨로지 SOP와 비교해 업무 완료 여부를 확인합니다
-          </p>
         </div>
       )}
 
@@ -117,10 +107,6 @@ export default function WorkerCapturePage() {
             <CheckCircle2 className="h-12 w-12" />
           </div>
           <p className="text-2xl font-bold">검증 완료!</p>
-          <p className="mt-2 text-lg text-accent-600">
-            +{formatCurrency(selectedTask.bonus)} 보너스 적립
-          </p>
-          <p className="mt-1 text-sm text-muted">5일 연속 캡처 스트릭 유지 🔥</p>
           <Button className="mt-8 w-full" onClick={() => setStep("select")}>
             다른 업무 캡처하기
           </Button>

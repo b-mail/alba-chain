@@ -69,7 +69,11 @@ export default function OwnerStaffPage() {
               {staffList.map((s) => {
                 const meta = statusMeta[s.status];
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow
+                    key={s.id}
+                    onClick={() => router.push(`/owner/staff/${s.id}`)}
+                    className="cursor-pointer"
+                  >
                     <TableCell className="pl-5">
                       <div className="flex items-center gap-3">
                         <div

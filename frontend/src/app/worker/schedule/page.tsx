@@ -9,7 +9,7 @@ const today = "수";
 export default function WorkerSchedulePage() {
   return (
     <AppShell role="worker" title="스케줄" subtitle="이번 주 근무 일정">
-      <Card className="mb-5 gradient-brand border-0 p-5 text-white">
+      <Card className="mb-5 gap-0 gradient-brand border-0 p-5 text-white">
         <p className="text-sm text-white/80">다음 근무</p>
         <p className="mt-1 text-xl font-bold">오늘 10:00 – 15:00</p>
         <p className="text-sm text-white/80">홀 · 강남 2호점</p>
@@ -23,7 +23,7 @@ export default function WorkerSchedulePage() {
             <Card
               key={day}
               className={cn(
-                "flex items-center justify-between p-4",
+                "flex flex-row items-center justify-between p-4",
                 isToday && "border-brand-500 bg-brand-50",
               )}
             >

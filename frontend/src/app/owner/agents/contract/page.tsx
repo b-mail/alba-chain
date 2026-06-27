@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
   Database,
@@ -11,6 +11,7 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
+import { ContractPdfPreview } from "@/components/agents/contract-pdf-preview";
 import { ExtractedFieldsPanel } from "@/components/agents/extracted-fields";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -26,16 +27,29 @@ import {
   extractedFromText,
   sampleContractText,
 } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 
 type Flow = "upload" | "new";
 
 function ContractAgentInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const flow: Flow = searchParams.get("flow") === "new" ? "new" : "upload";
 
   const [textInput, setTextInput] = useState(sampleContractText);
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
+  const [fileSelected, setFileSelected] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const loadFile = () => {
+    setFileLoading(true);
+    setTimeout(() => {
+      setFileLoading(false);
+      setFileSelected(true);
+    }, 3000);
+  };
 
   const runPipeline = () => {
     setProcessing(true);
@@ -49,6 +63,12 @@ function ContractAgentInner() {
   const reset = () => {
     setProcessing(false);
     setDone(false);
+  };
+
+  const clearFile = () => {
+    setFileSelected(false);
+    setFileLoading(false);
+    reset();
   };
 
   const extracted = flow === "upload" ? extractedFromPdf : extractedFromText;
@@ -70,21 +90,73 @@ function ContractAgentInner() {
                 <CardTitle>근로계약서 PDF 업로드</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="rounded-2xl border-2 border-dashed border-border p-10 text-center">
-                  <Upload className="mx-auto h-10 w-10 text-brand-600" />
-                  <p className="mt-3 font-semibold">김민지_근로계약서.pdf</p>
-                  <p className="text-sm text-muted-foreground">
-                    2.4 MB · 드래그 또는 클릭
-                  </p>
-                  <Button
-                    className="mt-6"
-                    onClick={runPipeline}
-                    disabled={processing}
+                {fileLoading ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border py-16 text-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-brand-600" />
+                    <p className="mt-4 text-lg font-semibold">업로드 중 . . .</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      김민지_근로계약서.pdf
+                    </p>
+                  </div>
+                ) : !fileSelected ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={loadFile}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") loadFile();
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(false);
+                      loadFile();
+                    }}
+                    className={cn(
+                      "flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-10 text-center transition",
+                      dragOver
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-border hover:border-brand-400 hover:bg-secondary",
+                    )}
                   >
-                    <Upload className="h-4 w-4" />
-                    업로드
-                  </Button>
-                </div>
+                    <Upload className="h-10 w-10 text-brand-600" />
+                    <p className="mt-3 font-semibold">
+                      PDF 파일을 여기에 놓으세요
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      스캔·사진 PDF도 OK · 클릭하여 선택
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <ContractPdfPreview
+                      data={extractedFromPdf}
+                      fileName="김민지_근로계약서.pdf"
+                      fileSize="2.4 MB"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        onClick={runPipeline}
+                        disabled={processing || done}
+                      >
+                        <Upload className="h-4 w-4" />
+                        업로드
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={clearFile}
+                        disabled={processing}
+                      >
+                        다른 파일
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -162,7 +234,12 @@ function ContractAgentInner() {
 
                   <div className="flex gap-2">
                     {flow === "upload" ? (
-                      <Button size="sm">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          router.push(`/owner/staff/${extracted.staffId ?? "s1"}`)
+                        }
+                      >
                         <Database className="h-4 w-4" />
                         등록 내역
                       </Button>

@@ -23,7 +23,7 @@ export default function WorkerDashboardPage() {
       title={`안녕하세요, ${workerProfile.name}님`}
       subtitle={`${workerProfile.storeName} · 시급 ${formatCurrency(workerProfile.hourlyWage)}`}
     >
-      <Card className="mb-5">
+      <Card className="mb-5 gap-0 p-5">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-semibold">이번 달 실수령 예상</p>
           <Link href="/worker/pay" className="text-xs font-medium text-brand-600">
@@ -58,7 +58,7 @@ export default function WorkerDashboardPage() {
       <Link href="/worker/capture">
         <Button size="lg" className="mb-6 w-full" variant="accent">
           <Camera className="h-5 w-5" />
-          캡처 한 장 · 추가 수당
+          매장 할일
         </Button>
       </Link>
 

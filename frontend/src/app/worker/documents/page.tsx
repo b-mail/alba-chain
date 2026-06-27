@@ -34,15 +34,10 @@ const typeConfig: Record<
 
 export default function WorkerDocumentsPage() {
   return (
-    <AppShell
-      role="worker"
-      title="내 서류"
-      subtitle="요청 없이 언제든 · Agent가 자동 등록"
-    >
+    <AppShell role="worker" title="내 서류">
       <Card className="mb-5 border-brand-200 bg-brand-50/50 p-4">
         <p className="text-sm text-brand-800">
-          근로계약서 Agent가 생성·등록한 서류와 급여명세서가 여기에 자동으로
-          쌓입니다. 사장님께 따로 요청하지 않아도 됩니다.
+          생성, 등록한 근로계약서와 급여명세서가 자동으로 등록됩니다.
         </p>
       </Card>
 
