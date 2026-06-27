@@ -9,6 +9,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
 )
 from sqlalchemy.orm import Session
@@ -32,10 +33,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
 
+def _assign_employee_or_400(
+    db: Session, contract: LaborContract, employee_id: int
+) -> None:
+    """계약-직원 연결 + ValueError → 400 매핑."""
+    try:
+        contract_service.assign_employee(db, contract, employee_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/upload", status_code=202, response_model=JobAccepted)
 async def upload_contract(
     background: BackgroundTasks,
     store_id: int = Form(...),
+    employee_id: int | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> JobAccepted:
@@ -46,6 +58,8 @@ async def upload_contract(
     )
 
     contract = LaborContract(store_id=store_id, source="uploaded", status="parsing")
+    if employee_id is not None:
+        _assign_employee_or_400(db, contract, employee_id)
     db.add(contract)
     db.commit()
     db.refresh(contract)
@@ -80,6 +94,8 @@ def draft_contract(
         raw_text=payload.raw_text,
         extracted_terms=extracted,
     )
+    if payload.employee_id is not None:
+        _assign_employee_or_400(db, contract, payload.employee_id)
     db.add(contract)
     db.commit()
     db.refresh(contract)
@@ -114,12 +130,16 @@ def update_contract(
 def confirm_contract(
     id: int,
     payload: ContractTermsInput | None = None,
+    employee_id: int | None = Query(None),
     db: Session = Depends(get_db),
 ) -> Contract:
     """UF1: 추출값 검증·확정 → contract_terms/work_schedules/ontology_nodes 정형화, active."""
     contract = db.get(LaborContract, id)
     if contract is None:
         raise HTTPException(status_code=404, detail="contract_not_found")
+
+    if employee_id is not None:
+        _assign_employee_or_400(db, contract, employee_id)
 
     provided = payload.model_dump(exclude_none=True) if payload is not None else {}
     if not provided.get("schedules"):
@@ -165,6 +185,14 @@ def send_contract(
     contract = db.get(LaborContract, id)
     if contract is None:
         raise HTTPException(status_code=404, detail="contract_not_found")
+
+    # 알바 신원(전화번호)으로 직원을 찾거나 생성해 계약과 연결한다.
+    # (급여·매핑이 contract.employee_id 로 동작하므로 이 연결이 필수)
+    if contract.employee_id is None:
+        employee = contract_service.resolve_or_create_employee_by_phone(
+            db, contract.store_id, payload.employee_phone
+        )
+        contract.employee_id = employee.id
 
     # MVP: 실제 발송 대신 로그 (SMS/카톡 연동 자리)
     logger.info(

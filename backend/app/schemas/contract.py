@@ -26,6 +26,7 @@ class ContractTermsInput(BaseModel):
 
 class ContractDraftRequest(BaseModel):
     store_id: int
+    employee_id: int | None = None
     raw_text: str = Field(
         examples=["김알바 시급 11000원, 월수금 18시~22시 근무, 4대보험 미가입 3.3%"]
     )
