@@ -52,6 +52,18 @@ uvicorn app.main:app --reload --port 8000
 - 베이스 경로: `/api/v1`
 - 헬스 체크: `GET /health`
 
+## 프론트엔드 Vercel 배포
+
+이 저장소는 monorepo 구조이므로 Vercel 프로젝트를 만들 때 프론트엔드만 배포 대상으로 지정한다.
+
+1. Vercel에서 GitHub 저장소 `b-mail/alba-chain` 을 Import한다.
+2. Project Settings → Build & Development Settings에서 Root Directory를 `frontend`로 설정한다.
+3. Framework Preset은 Next.js, Install Command는 `npm ci`, Build Command는 `npm run build`를 사용한다.
+4. Git 연결이 활성화되면 `main` 브랜치 push는 Production 배포, 그 외 브랜치/PR push는 Preview 배포로 자동 빌드된다.
+5. `frontend/vercel.json`의 `ignoreCommand`가 `frontend` 변경이 없는 커밋에서는 Vercel 빌드를 건너뛰도록 한다.
+
+저장소에는 `frontend/vercel.json`으로 프론트엔드 빌드 명령을 고정해 두었고, `.github/workflows/frontend-build.yml`이 `frontend/**` 변경마다 GitHub Actions에서 `npm ci && npm run build`를 실행한다.
+
 ## 환경 변수
 
 | 변수 | 설명 | 기본값 |
