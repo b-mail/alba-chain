@@ -5,16 +5,56 @@ import re
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
     ContractTerm,
+    Employee,
     LaborContract,
     OntologyNode,
     WorkSchedule,
 )
 
 _DAY_INDEX = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
+
+
+def assign_employee(db: Session, contract: LaborContract, employee_id: int) -> None:
+    """계약에 직원을 연결한다(같은 매장 소속 검증).
+
+    급여(pay_service)·매핑(mapping_service)은 contract.employee_id 로 계약을
+    조회하므로, 이 연결이 없으면 기본급·매핑 후보가 0이 된다.
+    """
+    employee = db.get(Employee, employee_id)
+    if employee is None:
+        raise ValueError("employee_not_found")
+    if employee.store_id != contract.store_id:
+        raise ValueError("employee_store_mismatch")
+    contract.employee_id = employee.id
+    db.add(contract)
+
+
+def resolve_or_create_employee_by_phone(
+    db: Session, store_id: int, phone: str, name: str | None = None
+) -> Employee:
+    """매장 내 전화번호로 직원을 찾고 없으면 생성한다.
+
+    UF2(신규 알바 등록)에서 계약서를 전송할 때 알바의 신원이 전화번호로
+    처음 확정되므로, 이 시점에 직원 레코드를 만들어 계약과 연결한다.
+    """
+    normalized = phone.strip()
+    employee = db.execute(
+        select(Employee).where(
+            Employee.store_id == store_id, Employee.phone == normalized
+        )
+    ).scalar_one_or_none()
+    if employee is None:
+        employee = Employee(
+            store_id=store_id, name=name or normalized, phone=normalized
+        )
+        db.add(employee)
+        db.flush()
+    return employee
 
 
 def _parse_days_note(note: str | None) -> list[int]:
