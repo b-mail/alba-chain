@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* brand = 뉴트럴 잉크 스케일 (Ramp 스타일 모노톤) */
+  --color-brand-50: #f7f7f5;
+  --color-brand-100: #eeeeeb;
+  --color-brand-200: #e2e2dd;
+  --color-brand-300: #c9c9c2;
+  --color-brand-400: #9a9a91;
+  --color-brand-500: #6e6e65;
+  --color-brand-600: #44443e;
+  --color-brand-700: #2e2e2a;
+  --color-brand-800: #1e1e1b;
+  --color-brand-900: #121210;
+
+  --color-accent-50: #ecfdf5;
+  --color-accent-100: #d1fae5;
+  --color-accent-400: #34d399;
+  --color-accent-500: #10b981;
+  --color-accent-600: #059669;
+
+  /* lime = 시그니처 포인트 컬러 */
+  --color-lime-300: #dcf94a;
+  --color-lime-400: #cdf23a;
+  --color-lime-500: #bce62a;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f6f4;
+
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: #f6f6f4;
+  --foreground: #1a1a17;
+  --card: #ffffff;
+  --card-foreground: #1a1a17;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a17;
+  --primary: #cdf23a;
+  --primary-foreground: #1a1a17;
+  --secondary: #f0f0ed;
+  --secondary-foreground: #1a1a17;
+  --muted: #f0f0ed;
+  --muted-foreground: #76766e;
+  --accent: #ecfdf5;
+  --accent-foreground: #059669;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #e8e8e4;
+  --input: #e4e4df;
+  --ring: #cdf23a;
+  --chart-1: #6366f1;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ec4899;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --primary: #818cf8;
+  --primary-foreground: #0f172a;
+  --secondary: #334155;
+  --secondary-foreground: #f8fafc;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #064e3b;
+  --accent-foreground: #ecfdf5;
+  --destructive: #dc2626;
+  --destructive-foreground: #f8fafc;
+  --border: #334155;
+  --input: #334155;
+  --ring: #818cf8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: var(--muted-foreground);
+  }
+
+  .glass {
+    @apply border border-white/20 bg-white/70 backdrop-blur-xl;
+  }
+
+  .gradient-brand {
+    background: linear-gradient(145deg, #1f1f1c 0%, #2c2c28 60%, #34342f 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  }
+}
