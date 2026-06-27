@@ -35,3 +35,6 @@ backend/storage/
 
 # Logs
 *.log
+
+# Internal analysis docs (not tracked)
+frontend-backend-mismatch.md
