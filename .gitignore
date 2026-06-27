@@ -1,0 +1,19 @@
+# Build artifacts / dependencies (root-level safety net)
+.next/
+**/.next/
+node_modules/
+**/node_modules/
+out/
+build/
+dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / misc
+.DS_Store
+*.pem
+*.log
+*.tsbuildinfo
